@@ -16,9 +16,11 @@ class PlacesAutocomplete extends Component {
     this.state = { autocompleteItems: [] }
 
     this.autocompleteCallback = this.autocompleteCallback.bind(this)
+    this.textSearchCallback = this.textSearchCallback.bind(this)
     this.handleInputKeyDown = this.handleInputKeyDown.bind(this)
     this.handleInputChange = this.handleInputChange.bind(this)
     this.debouncedFetchPredictions = debounce(this.fetchPredictions, this.props.debounce)
+    this.debouceFetchTextSearchPlaces = debounce(this.fetchTextSearchPlaces, this.props.debounce)
   }
 
   componentDidMount() {
@@ -31,6 +33,7 @@ class PlacesAutocomplete extends Component {
     }
 
     this.autocompleteService = new google.maps.places.AutocompleteService()
+    this.placesService = new google.maps.places.PlacesService(document.createElement('div'))
     this.autocompleteOK = google.maps.places.PlacesServiceStatus.OK
   }
 
@@ -60,6 +63,32 @@ class PlacesAutocomplete extends Component {
     })
   }
 
+  textSearchCallback(places, status) {
+    if (status != this.autocompleteOK) {
+      this.props.onError(status)
+      if (this.props.clearItemsOnError) { this.clearAutocomplete() }
+      return
+    }
+
+    // transform snake_case to camelCase
+    const formattedSuggestion = (structured_formatting) => ({
+      mainText: structured_formatting.name,
+      secondaryText: structured_formatting.formatted_address,
+    })
+
+    const { highlightFirstSuggestion } = this.props
+
+    this.setState({
+      autocompleteItems: places.map((p, idx) => ({
+        suggestion: p.name,
+        placeId: p.place_id,
+        active: (highlightFirstSuggestion && idx === 0 ? true : false),
+        index: idx,
+        formattedSuggestion: formattedSuggestion(p),
+      }))
+    })
+  }
+
   fetchPredictions() {
     const { value } = this.props.inputProps
     if (value.length) {
@@ -70,6 +99,15 @@ class PlacesAutocomplete extends Component {
     }
   }
 
+  fetchTextSearchPlaces() {
+    const { value } = this.props.inputProps
+    if (value.length) {
+      this.placesService.textSearch({
+        query: value
+      }, this.textSearchCallback)
+    }
+  }
+
   clearAutocomplete() {
     this.setState({ autocompleteItems: [] })
   }
@@ -77,10 +115,27 @@ class PlacesAutocomplete extends Component {
   selectAddress(address, placeId) {
     this.clearAutocomplete()
     this.handleSelect(address, placeId)
+    this.placesService.getDetails({placeId}, (place, status) => {
+      let changes = {address, google_place_id: placeId};
+      if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        const name = place.name;
+        const addr = place.formatted_address;
+        const timezone = place.utc_offset / 60;
+        changes = {...changes, lat, lng, name, addr, timezone};
+      }
+
+      this.handleDetailFetched(address, changes)
+    });
   }
 
   handleSelect(address, placeId) {
     this.props.onSelect ? this.props.onSelect(address, placeId) : this.props.inputProps.onChange(address)
+  }
+
+  handleDetailFetched(address, fetchedLocation) {
+    this.props.onDetailFetched ? this.props.onDetailFetched(address, fetchedLocation) : this.props.inputProps.onChange(address)
   }
 
   getActiveItem() {
@@ -107,7 +162,8 @@ class PlacesAutocomplete extends Component {
       this.props.onEnterKeyDown(this.props.inputProps.value)
       this.clearAutocomplete()
     } else {
-      return //noop
+      this.debouceFetchTextSearchPlaces()
+      this.clearAutocomplete()
     }
   }
 
@@ -346,7 +402,16 @@ PlacesAutocomplete.defaultProps = {
   clearItemsOnError: false,
   onError: (status) => console.error('[react-places-autocomplete]: error happened when fetching data from Google Maps API.\nPlease check the docs here (https://developers.google.com/maps/documentation/javascript/places#place_details_responses)\nStatus: ', status),
   classNames: {},
-  autocompleteItem: ({ suggestion }) => (<div>{suggestion}</div>),
+  autocompleteItem: ({ suggestion, formattedSuggestion }) => (
+    <div>
+      {formattedSuggestion.mainText || suggestion}
+      {formattedSuggestion.secondaryText ? (
+        <span className="text-muted" style={{display: 'block'}}>
+          {formattedSuggestion.secondaryText}
+        </span>
+      ) : null}
+    </div>
+  ),
   styles: {},
   options: {},
   debounce: 200,
