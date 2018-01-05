@@ -424,9 +424,6 @@ var PlacesAutocomplete = function (_Component) {
                 onTouchStart: function onTouchStart() {
                   return _this4.setActiveItemAtIndex(p.index);
                 },
-                onTouchEnd: function onTouchEnd() {
-                  return _this4.selectAddress(p.suggestion, p.placeId);
-                },
                 style: p.active ? _this4.inlineStyleFor('autocompleteItem', 'autocompleteItemActive') : _this4.inlineStyleFor('autocompleteItem'),
                 className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem') },
               _this4.props.autocompleteItem({ suggestion: p.suggestion, formattedSuggestion: p.formattedSuggestion })
