@@ -236,6 +236,27 @@ class PlacesAutocomplete extends Component {
     })
   }
 
+  handleFocus(event) {
+    const {initialLocations, highlightFirstSuggestion, selectedLocale} = this.props;
+
+    const formattedSuggestion = (location) => ({
+      mainText: location[`name${selectedLocale}`],
+      secondaryText: location.address,
+    });
+
+    if (!event.target.value && !!initialLocations) {
+      this.setState({
+        autocompleteItems: initialLocations.map((location, idx) => ({
+          suggestion: location[`name${selectedLocale}`],
+          placeId: location.googlePlaceId,
+          active: (highlightFirstSuggestion && idx === 0 ? true : false),
+          index: idx,
+          formattedSuggestion: formattedSuggestion(location),
+        }))
+      })
+    }
+  }
+
   handleInputChange(event) {
     this.props.inputProps.onChange(event.target.value)
     if (!event.target.value) {
@@ -287,6 +308,9 @@ class PlacesAutocomplete extends Component {
     return {
       ...defaultInputProps,
       ...this.props.inputProps,
+      onFocus: (event) => {
+        this.handleFocus(event)
+      },
       onChange: (event) => {
         this.handleInputChange(event)
       },
