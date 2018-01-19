@@ -307,6 +307,36 @@ var PlacesAutocomplete = function (_Component) {
       });
     }
   }, {
+    key: 'handleFocus',
+    value: function handleFocus(event) {
+      var _props = this.props,
+          initialLocations = _props.initialLocations,
+          highlightFirstSuggestion = _props.highlightFirstSuggestion,
+          selectedLocale = _props.selectedLocale;
+
+
+      var formattedSuggestion = function formattedSuggestion(location) {
+        return {
+          mainText: location['name' + selectedLocale],
+          secondaryText: location.address
+        };
+      };
+
+      if (!event.target.value && !!initialLocations) {
+        this.setState({
+          autocompleteItems: initialLocations.map(function (location, idx) {
+            return {
+              suggestion: location['name' + selectedLocale],
+              placeId: location.googlePlaceId,
+              active: highlightFirstSuggestion && idx === 0 ? true : false,
+              index: idx,
+              formattedSuggestion: formattedSuggestion(location)
+            };
+          })
+        });
+      }
+    }
+  }, {
     key: 'handleInputChange',
     value: function handleInputChange(event) {
       this.props.inputProps.onChange(event.target.value);
@@ -328,9 +358,9 @@ var PlacesAutocomplete = function (_Component) {
   }, {
     key: 'inlineStyleFor',
     value: function inlineStyleFor() {
-      var _props = this.props,
-          classNames = _props.classNames,
-          styles = _props.styles;
+      var _props2 = this.props,
+          classNames = _props2.classNames,
+          styles = _props2.styles;
       // No inline style if className is passed via props for the element.
 
       for (var _len = arguments.length, props = Array(_len), _key = 0; _key < _len; _key++) {
@@ -372,6 +402,9 @@ var PlacesAutocomplete = function (_Component) {
       };
 
       return _extends({}, defaultInputProps, this.props.inputProps, {
+        onFocus: function onFocus(event) {
+          _this3.handleFocus(event);
+        },
         onChange: function onChange(event) {
           _this3.handleInputChange(event);
         },
@@ -390,9 +423,9 @@ var PlacesAutocomplete = function (_Component) {
     value: function render() {
       var _this4 = this;
 
-      var _props2 = this.props,
-          classNames = _props2.classNames,
-          styles = _props2.styles;
+      var _props3 = this.props,
+          classNames = _props3.classNames,
+          styles = _props3.styles;
       var autocompleteItems = this.state.autocompleteItems;
 
       var inputProps = this.getInputProps();
@@ -423,6 +456,9 @@ var PlacesAutocomplete = function (_Component) {
                 },
                 onTouchStart: function onTouchStart() {
                   return _this4.setActiveItemAtIndex(p.index);
+                },
+                onTouchEnd: function onTouchEnd() {
+                  return _this4.selectAddress(p.suggestion, p.placeId);
                 },
                 style: p.active ? _this4.inlineStyleFor('autocompleteItem', 'autocompleteItemActive') : _this4.inlineStyleFor('autocompleteItem'),
                 className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem') },
