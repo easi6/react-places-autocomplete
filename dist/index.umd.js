@@ -531,14 +531,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	                onMouseOver: function onMouseOver() {
 	                  return _this4.setActiveItemAtIndex(p.index);
 	                },
-	                onMouseDown: function onMouseDown() {
-	                  return _this4.selectAddress(p.suggestion, p.placeId);
+	                onMouseDown: function onMouseDown(e) {
+	                  e.preventDefault();
+	                  e.stopPropagation();
+	                  _this4.selectAddress(p.suggestion, p.placeId);
 	                },
 	                onTouchStart: function onTouchStart() {
 	                  return _this4.setActiveItemAtIndex(p.index);
 	                },
-	                onTouchEnd: function onTouchEnd() {
-	                  return _this4.selectAddress(p.suggestion, p.placeId);
+	                onTouchEnd: function onTouchEnd(e) {
+	                  e.preventDefault();
+	                  e.stopPropagation();
+	                  _this4.selectAddress(p.suggestion, p.placeId);
 	                },
 	                style: p.active ? _this4.inlineStyleFor('autocompleteItem', 'autocompleteItemActive') : _this4.inlineStyleFor('autocompleteItem'),
 	                className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem') },
