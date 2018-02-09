@@ -355,7 +355,7 @@ class PlacesAutocomplete extends Component {
           >
             {autocompleteItems.map((p, idx) => (
               <div
-                key={p.placeId || p.index || idx}
+                key={p.placeId || p.suggestion || p.index || idx}
                 onMouseOver={() => this.setActiveItemAtIndex(p.index)}
                 onMouseDown={(e) => {
                   e.preventDefault();
