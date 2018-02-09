@@ -541,7 +541,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            return _react2.default.createElement(
 	              'div',
 	              {
-	                key: p.placeId || p.index || idx,
+	                key: p.placeId || p.suggestion || p.index || idx,
 	                onMouseOver: function onMouseOver() {
 	                  return _this4.setActiveItemAtIndex(p.index);
 	                },
