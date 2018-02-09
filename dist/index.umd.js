@@ -177,7 +177,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	          return {
 	            suggestion: p.description,
 	            placeId: p.place_id,
-	            active: highlightFirstSuggestion && idx === 0 ? true : false,
+	            active: !!(highlightFirstSuggestion && idx === 0),
 	            index: idx,
 	            formattedSuggestion: formattedSuggestion(p.structured_formatting)
 	          };
@@ -211,7 +211,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	          return {
 	            suggestion: p.name,
 	            placeId: p.place_id,
-	            active: highlightFirstSuggestion && idx === 0 ? true : false,
+	            active: !!(highlightFirstSuggestion && idx === 0),
 	            index: idx,
 	            formattedSuggestion: formattedSuggestion(p)
 	          };
@@ -247,24 +247,34 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	  }, {
 	    key: 'selectAddress',
-	    value: function selectAddress(address, placeId) {
+	    value: function selectAddress(address, placeId, item) {
 	      var _this2 = this;
 	
 	      this.clearAutocomplete();
 	      this.handleSelect(address, placeId);
-	      this.placesService.getDetails({ placeId: placeId }, function (place, status) {
-	        var changes = { address: address, google_place_id: placeId };
-	        if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-	          var lat = place.geometry.location.lat();
-	          var lng = place.geometry.location.lng();
-	          var name = place.name;
-	          var addr = place.formatted_address;
-	          var timezone = place.utc_offset / 60;
-	          changes = _extends({}, changes, { lat: lat, lng: lng, name: name, addr: addr, timezone: timezone });
-	        }
+	      if (placeId) {
+	        this.placesService.getDetails({ placeId: placeId }, function (place, status) {
+	          var changes = { address: address, google_place_id: placeId };
+	          if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+	            var lat = place.geometry.location.lat();
+	            var lng = place.geometry.location.lng();
+	            var name = place.name;
+	            var addr = place.formatted_address;
+	            var timezone = place.utc_offset / 60;
+	            changes = _extends({}, changes, { lat: lat, lng: lng, name: name, addr: addr, timezone: timezone });
+	          }
 	
-	        _this2.handleDetailFetched(address, changes);
-	      });
+	          _this2.handleDetailFetched(address, changes);
+	        });
+	      } else {
+	        var lat = +item.lat;
+	        var lng = +item.lng;
+	        var name = item.formattedSuggestion && item.formattedSuggestion.mainText;
+	        var addr = item.formattedSuggestion && item.formattedSuggestion.secondaryText;
+	        var timezone = item.timezone;
+	        var info = { lat: lat, lng: lng, name: name, addr: addr, address: addr, timezone: timezone };
+	        this.handleDetailFetched(address, info);
+	      }
 	    }
 	  }, {
 	    key: 'handleSelect',
@@ -299,7 +309,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (activeItem === undefined) {
 	        this.handleEnterKeyWithoutActiveItem();
 	      } else {
-	        this.selectAddress(activeItem.suggestion, activeItem.placeId);
+	        this.selectAddress(activeItem.suggestion, activeItem.placeId, activeItem);
 	      }
 	    }
 	  }, {
@@ -380,9 +390,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        autocompleteItems: this.state.autocompleteItems.map(function (item, idx) {
 	          if (idx === index) {
 	            return _extends({}, item, { active: true });
-	          } else {
-	            return _extends({}, item, { active: false });
 	          }
+	          return _extends({}, item, { active: false });
 	        })
 	      });
 	    }
@@ -408,9 +417,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            return {
 	              suggestion: location['name' + selectedLocale],
 	              placeId: location.googlePlaceId,
-	              active: highlightFirstSuggestion && idx === 0 ? true : false,
+	              lat: location.latitude,
+	              lng: location.longitude,
+	              active: !!(highlightFirstSuggestion && idx === 0),
 	              index: idx,
-	              formattedSuggestion: formattedSuggestion(location)
+	              formattedSuggestion: formattedSuggestion(location),
+	              timezone: location.timezone
 	            };
 	          })
 	        });
@@ -477,8 +489,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var _this3 = this;
 	
 	      var defaultInputProps = {
-	        type: "text",
-	        autoComplete: "off"
+	        type: 'text',
+	        autoComplete: 'off'
 	      };
 	
 	      return _extends({}, defaultInputProps, this.props.inputProps, {
@@ -515,26 +527,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	        {
 	          id: 'PlacesAutocomplete__root',
 	          style: this.inlineStyleFor('root'),
-	          className: this.classNameFor('root') },
+	          className: this.classNameFor('root')
+	        },
 	        _react2.default.createElement('input', inputProps),
 	        autocompleteItems.length > 0 && _react2.default.createElement(
 	          'div',
 	          {
 	            id: 'PlacesAutocomplete__autocomplete-container',
 	            style: this.inlineStyleFor('autocompleteContainer'),
-	            className: this.classNameFor('autocompleteContainer') },
+	            className: this.classNameFor('autocompleteContainer')
+	          },
 	          autocompleteItems.map(function (p, idx) {
 	            return _react2.default.createElement(
 	              'div',
 	              {
-	                key: p.placeId,
+	                key: p.placeId || p.index || idx,
 	                onMouseOver: function onMouseOver() {
 	                  return _this4.setActiveItemAtIndex(p.index);
 	                },
 	                onMouseDown: function onMouseDown(e) {
 	                  e.preventDefault();
 	                  e.stopPropagation();
-	                  _this4.selectAddress(p.suggestion, p.placeId);
+	                  _this4.selectAddress(p.suggestion, p.placeId, p);
 	                },
 	                onTouchStart: function onTouchStart() {
 	                  return _this4.setActiveItemAtIndex(p.index);
@@ -542,10 +556,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	                onTouchEnd: function onTouchEnd(e) {
 	                  e.preventDefault();
 	                  e.stopPropagation();
-	                  _this4.selectAddress(p.suggestion, p.placeId);
+	                  _this4.selectAddress(p.suggestion, p.placeId, p);
 	                },
 	                style: p.active ? _this4.inlineStyleFor('autocompleteItem', 'autocompleteItemActive') : _this4.inlineStyleFor('autocompleteItem'),
-	                className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem') },
+	                className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem')
+	              },
 	              _this4.props.autocompleteItem({ suggestion: p.suggestion, formattedSuggestion: p.formattedSuggestion })
 	            );
 	          }),
@@ -554,7 +569,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	            {
 	              id: 'PlacesAutocomplete__google-logo',
 	              style: this.inlineStyleFor('googleLogoContainer'),
-	              className: this.classNameFor('googleLogoContainer') },
+	              className: this.classNameFor('googleLogoContainer')
+	            },
 	            _react2.default.createElement('img', {
 	              src: __webpack_require__(42)("./powered_by_google_" + this.props.googleLogoType + '.png'),
 	              style: this.inlineStyleFor('googleLogoImage'),
@@ -610,7 +626,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  debounce: _propTypes2.default.number,
 	  highlightFirstSuggestion: _propTypes2.default.bool,
 	  googleLogo: _propTypes2.default.bool,
-	  googleLogoType: _propTypes2.default.oneOf(["default", "inverse"])
+	  googleLogoType: _propTypes2.default.oneOf(['default', 'inverse'])
 	};
 	
 	PlacesAutocomplete.defaultProps = {
@@ -4579,6 +4595,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	     */
 	    componentWillUnmount: 'DEFINE_MANY',
 	
+	    /**
+	     * Replacement for (deprecated) `componentWillMount`.
+	     *
+	     * @optional
+	     */
+	    UNSAFE_componentWillMount: 'DEFINE_MANY',
+	
+	    /**
+	     * Replacement for (deprecated) `componentWillReceiveProps`.
+	     *
+	     * @optional
+	     */
+	    UNSAFE_componentWillReceiveProps: 'DEFINE_MANY',
+	
+	    /**
+	     * Replacement for (deprecated) `componentWillUpdate`.
+	     *
+	     * @optional
+	     */
+	    UNSAFE_componentWillUpdate: 'DEFINE_MANY',
+	
 	    // ==== Advanced methods ====
 	
 	    /**
@@ -4592,6 +4629,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	     * @overridable
 	     */
 	    updateComponent: 'OVERRIDE_BASE'
+	  };
+	
+	  /**
+	   * Similar to ReactClassInterface but for static methods.
+	   */
+	  var ReactClassStaticInterface = {
+	    /**
+	     * This method is invoked after a component is instantiated and when it
+	     * receives new props. Return an object to update state in response to
+	     * prop changes. Return null to indicate no change to state.
+	     *
+	     * If an object is returned, its keys will be merged into the existing state.
+	     *
+	     * @return {object || null}
+	     * @optional
+	     */
+	    getDerivedStateFromProps: 'DEFINE_MANY_MERGED'
 	  };
 	
 	  /**
@@ -4828,6 +4882,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    if (!statics) {
 	      return;
 	    }
+	
 	    for (var name in statics) {
 	      var property = statics[name];
 	      if (!statics.hasOwnProperty(name)) {
@@ -4844,14 +4899,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	        name
 	      );
 	
-	      var isInherited = name in Constructor;
-	      _invariant(
-	        !isInherited,
-	        'ReactClass: You are attempting to define ' +
-	          '`%s` on your component more than once. This conflict may be ' +
-	          'due to a mixin.',
-	        name
-	      );
+	      var isAlreadyDefined = name in Constructor;
+	      if (isAlreadyDefined) {
+	        var specPolicy = ReactClassStaticInterface.hasOwnProperty(name)
+	          ? ReactClassStaticInterface[name]
+	          : null;
+	
+	        _invariant(
+	          specPolicy === 'DEFINE_MANY_MERGED',
+	          'ReactClass: You are attempting to define ' +
+	            '`%s` on your component more than once. This conflict may be ' +
+	            'due to a mixin.',
+	          name
+	        );
+	
+	        Constructor[name] = createMergedResultFunction(Constructor[name], property);
+	
+	        return;
+	      }
+	
 	      Constructor[name] = property;
 	    }
 	  }
@@ -5159,6 +5225,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	        !Constructor.prototype.componentWillRecieveProps,
 	        '%s has a method called ' +
 	          'componentWillRecieveProps(). Did you mean componentWillReceiveProps()?',
+	        spec.displayName || 'A component'
+	      );
+	      warning(
+	        !Constructor.prototype.UNSAFE_componentWillRecieveProps,
+	        '%s has a method called UNSAFE_componentWillRecieveProps(). ' +
+	          'Did you mean UNSAFE_componentWillReceiveProps()?',
 	        spec.displayName || 'A component'
 	      );
 	    }
@@ -5777,7 +5849,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 43 */
 /***/ (function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__.p + "391346114f3c35d0cbb7457f63f40818.png";
+	module.exports = __webpack_require__.p + "023faf5382ab439f5f3a2564b17eab09.png";
 
 /***/ }),
 /* 44 */

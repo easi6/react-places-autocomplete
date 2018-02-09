@@ -97,7 +97,7 @@ var PlacesAutocomplete = function (_Component) {
           return {
             suggestion: p.description,
             placeId: p.place_id,
-            active: highlightFirstSuggestion && idx === 0 ? true : false,
+            active: !!(highlightFirstSuggestion && idx === 0),
             index: idx,
             formattedSuggestion: formattedSuggestion(p.structured_formatting)
           };
@@ -131,7 +131,7 @@ var PlacesAutocomplete = function (_Component) {
           return {
             suggestion: p.name,
             placeId: p.place_id,
-            active: highlightFirstSuggestion && idx === 0 ? true : false,
+            active: !!(highlightFirstSuggestion && idx === 0),
             index: idx,
             formattedSuggestion: formattedSuggestion(p)
           };
@@ -167,24 +167,34 @@ var PlacesAutocomplete = function (_Component) {
     }
   }, {
     key: 'selectAddress',
-    value: function selectAddress(address, placeId) {
+    value: function selectAddress(address, placeId, item) {
       var _this2 = this;
 
       this.clearAutocomplete();
       this.handleSelect(address, placeId);
-      this.placesService.getDetails({ placeId: placeId }, function (place, status) {
-        var changes = { address: address, google_place_id: placeId };
-        if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-          var lat = place.geometry.location.lat();
-          var lng = place.geometry.location.lng();
-          var name = place.name;
-          var addr = place.formatted_address;
-          var timezone = place.utc_offset / 60;
-          changes = _extends({}, changes, { lat: lat, lng: lng, name: name, addr: addr, timezone: timezone });
-        }
+      if (placeId) {
+        this.placesService.getDetails({ placeId: placeId }, function (place, status) {
+          var changes = { address: address, google_place_id: placeId };
+          if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+            var lat = place.geometry.location.lat();
+            var lng = place.geometry.location.lng();
+            var name = place.name;
+            var addr = place.formatted_address;
+            var timezone = place.utc_offset / 60;
+            changes = _extends({}, changes, { lat: lat, lng: lng, name: name, addr: addr, timezone: timezone });
+          }
 
-        _this2.handleDetailFetched(address, changes);
-      });
+          _this2.handleDetailFetched(address, changes);
+        });
+      } else {
+        var lat = +item.lat;
+        var lng = +item.lng;
+        var name = item.formattedSuggestion && item.formattedSuggestion.mainText;
+        var addr = item.formattedSuggestion && item.formattedSuggestion.secondaryText;
+        var timezone = item.timezone;
+        var info = { lat: lat, lng: lng, name: name, addr: addr, address: addr, timezone: timezone };
+        this.handleDetailFetched(address, info);
+      }
     }
   }, {
     key: 'handleSelect',
@@ -219,7 +229,7 @@ var PlacesAutocomplete = function (_Component) {
       if (activeItem === undefined) {
         this.handleEnterKeyWithoutActiveItem();
       } else {
-        this.selectAddress(activeItem.suggestion, activeItem.placeId);
+        this.selectAddress(activeItem.suggestion, activeItem.placeId, activeItem);
       }
     }
   }, {
@@ -300,9 +310,8 @@ var PlacesAutocomplete = function (_Component) {
         autocompleteItems: this.state.autocompleteItems.map(function (item, idx) {
           if (idx === index) {
             return _extends({}, item, { active: true });
-          } else {
-            return _extends({}, item, { active: false });
           }
+          return _extends({}, item, { active: false });
         })
       });
     }
@@ -328,9 +337,12 @@ var PlacesAutocomplete = function (_Component) {
             return {
               suggestion: location['name' + selectedLocale],
               placeId: location.googlePlaceId,
-              active: highlightFirstSuggestion && idx === 0 ? true : false,
+              lat: location.latitude,
+              lng: location.longitude,
+              active: !!(highlightFirstSuggestion && idx === 0),
               index: idx,
-              formattedSuggestion: formattedSuggestion(location)
+              formattedSuggestion: formattedSuggestion(location),
+              timezone: location.timezone
             };
           })
         });
@@ -397,8 +409,8 @@ var PlacesAutocomplete = function (_Component) {
       var _this3 = this;
 
       var defaultInputProps = {
-        type: "text",
-        autoComplete: "off"
+        type: 'text',
+        autoComplete: 'off'
       };
 
       return _extends({}, defaultInputProps, this.props.inputProps, {
@@ -435,26 +447,28 @@ var PlacesAutocomplete = function (_Component) {
         {
           id: 'PlacesAutocomplete__root',
           style: this.inlineStyleFor('root'),
-          className: this.classNameFor('root') },
+          className: this.classNameFor('root')
+        },
         _react2.default.createElement('input', inputProps),
         autocompleteItems.length > 0 && _react2.default.createElement(
           'div',
           {
             id: 'PlacesAutocomplete__autocomplete-container',
             style: this.inlineStyleFor('autocompleteContainer'),
-            className: this.classNameFor('autocompleteContainer') },
+            className: this.classNameFor('autocompleteContainer')
+          },
           autocompleteItems.map(function (p, idx) {
             return _react2.default.createElement(
               'div',
               {
-                key: p.placeId,
+                key: p.placeId || p.index || idx,
                 onMouseOver: function onMouseOver() {
                   return _this4.setActiveItemAtIndex(p.index);
                 },
                 onMouseDown: function onMouseDown(e) {
                   e.preventDefault();
                   e.stopPropagation();
-                  _this4.selectAddress(p.suggestion, p.placeId);
+                  _this4.selectAddress(p.suggestion, p.placeId, p);
                 },
                 onTouchStart: function onTouchStart() {
                   return _this4.setActiveItemAtIndex(p.index);
@@ -462,10 +476,11 @@ var PlacesAutocomplete = function (_Component) {
                 onTouchEnd: function onTouchEnd(e) {
                   e.preventDefault();
                   e.stopPropagation();
-                  _this4.selectAddress(p.suggestion, p.placeId);
+                  _this4.selectAddress(p.suggestion, p.placeId, p);
                 },
                 style: p.active ? _this4.inlineStyleFor('autocompleteItem', 'autocompleteItemActive') : _this4.inlineStyleFor('autocompleteItem'),
-                className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem') },
+                className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem')
+              },
               _this4.props.autocompleteItem({ suggestion: p.suggestion, formattedSuggestion: p.formattedSuggestion })
             );
           }),
@@ -474,7 +489,8 @@ var PlacesAutocomplete = function (_Component) {
             {
               id: 'PlacesAutocomplete__google-logo',
               style: this.inlineStyleFor('googleLogoContainer'),
-              className: this.classNameFor('googleLogoContainer') },
+              className: this.classNameFor('googleLogoContainer')
+            },
             _react2.default.createElement('img', {
               src: require('./images/powered_by_google_' + this.props.googleLogoType + '.png'),
               style: this.inlineStyleFor('googleLogoImage'),
@@ -530,7 +546,7 @@ PlacesAutocomplete.propTypes = {
   debounce: _propTypes2.default.number,
   highlightFirstSuggestion: _propTypes2.default.bool,
   googleLogo: _propTypes2.default.bool,
-  googleLogoType: _propTypes2.default.oneOf(["default", "inverse"])
+  googleLogoType: _propTypes2.default.oneOf(['default', 'inverse'])
 };
 
 PlacesAutocomplete.defaultProps = {
