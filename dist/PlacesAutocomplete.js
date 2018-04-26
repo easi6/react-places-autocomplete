@@ -44,7 +44,10 @@ var PlacesAutocomplete = function (_Component) {
 
     var _this = _possibleConstructorReturn(this, (PlacesAutocomplete.__proto__ || Object.getPrototypeOf(PlacesAutocomplete)).call(this, props));
 
-    _this.state = { autocompleteItems: [] };
+    _this.state = {
+      autocompleteItems: [],
+      isTouchMove: false,
+    };
 
     _this.autocompleteCallback = _this.autocompleteCallback.bind(_this);
     _this.textSearchCallback = _this.textSearchCallback.bind(_this);
@@ -471,12 +474,19 @@ var PlacesAutocomplete = function (_Component) {
                   _this4.selectAddress(p.suggestion, p.placeId, p);
                 },
                 onTouchStart: function onTouchStart() {
+                  _this4.setState({isTouchMove: false});
                   return _this4.setActiveItemAtIndex(p.index);
+                },
+                onTouchMove: function onTouchMove() {
+                  _this4.setState({isTouchMove: true});
                 },
                 onTouchEnd: function onTouchEnd(e) {
                   e.preventDefault();
                   e.stopPropagation();
-                  _this4.selectAddress(p.suggestion, p.placeId, p);
+                  if (!_this4.state.isTouchMove) {
+                    _this4.selectAddress(p.suggestion, p.placeId, p);
+                  }
+                  _this4.setState({isTouchMove: false});
                 },
                 style: p.active ? _this4.inlineStyleFor('autocompleteItem', 'autocompleteItemActive') : _this4.inlineStyleFor('autocompleteItem'),
                 className: p.active ? _this4.classNameFor('autocompleteItem', 'autocompleteItemActive') : _this4.classNameFor('autocompleteItem')
